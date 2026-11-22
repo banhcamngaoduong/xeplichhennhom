@@ -547,6 +547,44 @@
             saveStateToCloud();
         }
 
+        function updateMemberName(idx, newName) {
+            const cleanName = newName.trim() || `Bạn ${idx + 1}`;
+            state.members[idx] = cleanName;
+            // Cập nhật tiêu đề cột bảng tuần ngay lập tức mà không làm mất focus ô đang gõ
+            if (state.currentView === 'weekly') {
+                updateWeeklyTableHeaders();
+            }
+            // Dùng debounce để tránh gửi quá nhiều request lên Firestore khi đang gõ phím
+            clearTimeout(nameDebounceTimer);
+            nameDebounceTimer = setTimeout(() => {
+                saveStateToCloud();
+            }, 600);
+        }
+
+        function removeMember(idx) {
+            if (state.members.length <= 1) return;
+            state.members.splice(idx, 1);
+
+            // Dịch chuyển dữ liệu lịch của các thành viên phía sau lên để khớp chỉ số mới
+            Object.keys(state.schedule).forEach(dateKey => {
+                const dayData = state.schedule[dateKey];
+                const updatedDayData = {};
+                let newIdx = 0;
+                for (let oldIdx = 0; oldIdx <= state.members.length; oldIdx++) {
+                    if (oldIdx === idx) continue;
+                    if (dayData[oldIdx]) {
+                        updatedDayData[newIdx] = dayData[oldIdx];
+                    }
+                    newIdx++;
+                }
+                state.schedule[dateKey] = updatedDayData;
+            });
+
+            renderMembersConfig();
+            renderCurrentView();
+            saveStateToCloud();
+        }
+
         // --- RENDER UI: THÀNH VIÊN ---
         function renderMembersConfig() {
             const countInput = document.getElementById('input-member-count');
