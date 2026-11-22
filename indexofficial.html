@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rảnh Không? - Xếp Lịch Hẹn Nhóm Bạn</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        h1, h2, h3, .font-heading {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Custom scrollbar cho bảng trên mobile */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Hiệu ứng chuyển đổi mượt */
+        .status-btn {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .status-btn:active {
+            transform: scale(0.97);
+        }
+        /* Sticky column shadow khi cuộn ngang */
+        .sticky-col-shadow {
+            box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm shadow-emerald-200">
+                    <i data-lucide="calendar-check-2" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight leading-none">Rảnh Không?</h1>
+                    <p class="text-xs text-slate-500 mt-0.5 hidden sm:block">Chốt kèo nhanh chóng cùng hội bạn thân</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2">
+                <!-- Huy hiệu trạng thái đồng bộ Firebase -->
+                <div id="sync-status-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl transition-all" title="Trạng thái đồng bộ đám mây">
+                    <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="sync-status-text" class="hidden sm:inline">Đang kết nối...</span>
+                </div>
+
+                <button id="btn-copy-summary" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
+                    <span>Sao chép lịch rảnh</span>
+                </button>
+                <button id="btn-reset-week" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 hover:text-rose-600 border border-slate-200 rounded-xl transition-colors" title="Đặt lại dữ liệu tuần đang xem">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span class="hidden md:inline">Đặt lại tuần</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Khu vực 1: Quản lý thành viên (Số lượng & Tên) -->
+        <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800">Thành viên tham gia</h2>
+                        <p class="text-xs text-slate-500">Nhập số người hoặc bấm trực tiếp vào tên để chỉnh sửa</p>
+                    </div>
+                </div>
+
+                <!-- Bộ điều khiển số lượng thành viên (i) -->
+                <div class="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto">
+                    <span class="text-xs font-medium text-slate-600">Số người (i):</span>
+                    <div class="flex items-center gap-1.5">
+                        <button id="btn-decrease-member" class="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors" title="Giảm 1 người">
+                            <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <input type="number" id="input-member-count" min="1" max="15" value="3" class="w-12 text-center text-sm font-bold text-slate-800 bg-white border border-slate-200 rounded-lg py-1 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <button id="btn-increase-member" class="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors" title="Thêm 1 người">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách input tên thành viên -->
+            <div id="members-list" class="pt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                <!-- Render bằng JS -->
+            </div>
+        </section>
+
+        <!-- Khu vực 2: Thanh điều hướng Tab & Chọn Thời Gian -->
+        <section class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <!-- Tabs chuyển đổi chế độ xem -->
+            <div class="inline-flex p-1 bg-slate-200/70 rounded-xl self-start">
+                <button id="tab-weekly" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-slate-900 shadow-sm">
+                    <i data-lucide="calendar-days" class="w-4 h-4 text-emerald-600"></i>
+                    <span>Lịch theo Tuần</span>
+                </button>
+                <button id="tab-monthly" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900">
+                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                    <span>Lịch theo Tháng</span>
+                </button>
+            </div>
+
+            <!-- Điều hướng thời gian (Tuần hoặc Tháng) -->
+            <div class="flex items-center justify-between sm:justify-end gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+                <button id="btn-prev-period" class="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors" title="Trước">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+                <div class="px-2 text-center min-w-[180px] sm:min-w-[220px]">
+                    <span id="current-period-label" class="text-sm font-bold text-slate-800 block">Tuần này</span>
+                    <span id="current-period-sub" class="text-xs text-slate-500 block">17/11 - 23/11/2026</span>
+                </div>
+                <button id="btn-next-period" class="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors" title="Sau">
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
+                <div class="h-5 w-[1px] bg-slate-200 mx-1"></div>
+                <button id="btn-today" class="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors">
+                    Hôm nay
+                </button>
+            </div>
+        </section>
+
+        <!-- Chú thích màu sắc (Legend) -->
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200 text-xs">
+            <div class="flex flex-wrap items-center gap-3 sm:gap-5">
+                <span class="font-semibold text-slate-500">Chú thích:</span>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3.5 h-3.5 rounded bg-emerald-100 border border-emerald-400 inline-block"></span>
+                    <span class="text-slate-700 font-medium">Rảnh</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3.5 h-3.5 rounded bg-emerald-500 border border-emerald-600 inline-block"></span>
+                    <span class="text-slate-700 font-medium">Rảnh cả ngày <span class="text-slate-400 font-normal">(Tự điền các buổi còn lại)</span></span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3.5 h-3.5 rounded bg-rose-100 border border-rose-300 inline-block"></span>
+                    <span class="text-slate-700 font-medium">Không Rảnh</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3.5 h-3.5 rounded bg-slate-50 border border-slate-200 inline-block"></span>
+                    <span class="text-slate-500">Chưa chọn</span>
+                </div>
+            </div>
+            <div class="text-slate-500 italic hidden lg:block">
+                * Mẹo: Bấm vào ô để đổi nhanh trạng thái hoặc chọn từ danh sách
+            </div>
+        </div>
+
+        <!-- Khu vực 3A: CHẾ ĐỘ XEM LỊCH THEO TUẦN (WEEKLY VIEW) -->
+        <section id="view-weekly" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="table-container overflow-x-auto">
+                <table class="w-full border-collapse text-left">
+                    <thead>
+                        <tr id="weekly-table-header" class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            <!-- Cột 1: Ngày -->
+                            <th class="py-3.5 px-3 sm:px-4 w-28 sm:w-36 sticky left-0 z-20 bg-slate-50 border-r border-slate-200">Ngày</th>
+                            <!-- Cột 2: Buổi -->
+                            <th class="py-3.5 px-3 w-20 sm:w-24 border-r border-slate-200 text-center">Buổi</th>
+                            <!-- Cột 3: Rảnh -->
+                            <th class="py-3.5 px-3 w-20 sm:w-24 border-r border-slate-200 text-center bg-slate-100/70">Rảnh</th>
+                            <!-- Cột 4 -> 3+i: Các thành viên (Render bằng JS) -->
+                        </tr>
+                    </thead>
+                    <tbody id="weekly-table-body" class="divide-y divide-slate-200 text-sm">
+                        <!-- Render bằng JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Khu vực 3B: CHẾ ĐỘ XEM LỊCH THEO THÁNG (MONTHLY VIEW) -->
+        <section id="view-monthly" class="hidden space-y-4">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <!-- Header các thứ trong tuần -->
+                <div class="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center py-3 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                    <div>Thứ 2</div>
+                    <div>Thứ 3</div>
+                    <div>Thứ 4</div>
+                    <div>Thứ 5</div>
+                    <div>Thứ 6</div>
+                    <div class="text-indigo-600">Thứ 7</div>
+                    <div class="text-rose-600">Chủ Nhật</div>
+                </div>
+                <!-- Lưới các ngày trong tháng -->
+                <div id="monthly-grid" class="grid grid-cols-7 divide-x divide-y divide-slate-200 bg-slate-200">
+                    <!-- Render bằng JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 space-y-1">
+            <div>Dữ liệu được đồng bộ trực tiếp theo thời gian thực qua Firebase Firestore (<span id="footer-room-name" class="font-semibold text-slate-700">nhom-chinh</span>).</div>
+            <div>Gửi đường link trang web này cho bạn bè để cả nhóm cùng điền lịch. Bấm <strong>"Sao chép lịch rảnh"</strong> để gửi tóm tắt vào nhóm chat!</div>
+        </div>
+    </footer>
+
+    <!-- Custom Modal Xác Nhận Đặt Lại Tuần -->
+    <div id="modal-confirm" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 transform transition-all">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-1">Đặt lại lịch tuần này?</h3>
+            <p class="text-sm text-slate-600 mb-6">Toàn bộ lựa chọn rảnh/bận của mọi người trong tuần đang xem sẽ được xóa về trống. Hành động này không thể hoàn tác.</p>
+            <div class="flex items-center justify-end gap-2.5">
+                <button id="btn-cancel-reset" class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Hủy bỏ</button>
+                <button id="btn-confirm-reset" class="px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-sm">Xác nhận xóa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script type="module">
+        /**
+         * ỨNG DỤNG XẾP LỊCH RẢNH NHÓM BẠN - ĐỒNG BỘ THỜI GIAN THỰC QUA FIREBASE FIRESTORE
+         */
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // --- CẤU HÌNH FIREBASE CỦA DỰ ÁN xep-lich-7d27f ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9_hWiPMb698t35i_n4KzpRQ4EsDwAs3U",
+            authDomain: "xep-lich-7d27f.firebaseapp.com",
+            projectId: "xep-lich-7d27f",
+            storageBucket: "xep-lich-7d27f.firebasestorage.app",
+            messagingSenderId: "169819555588",
+            appId: "1:169819555588:web:71beff5d614557b7d3f251",
+            measurementId: "G-SVWQZP5DYX"
+        };
+
+        // Khởi tạo Firebase & Firestore
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Lấy tên phòng từ query param '?room=...' trên URL (mặc định là 'nhom-chinh')
+        const urlParams = new URLSearchParams(window.location.search);
+        const rawRoom = urlParams.get('room') || 'nhom-chinh';
+        const ROOM_ID = rawRoom.replace(/[^a-zA-Z0-9_-]/g, '') || 'nhom-chinh';
+        const scheduleDocRef = doc(db, 'schedules', ROOM_ID);
+
+        // --- CẤU HÌNH & HẰNG SỐ ---
+        const DAYS_OF_WEEK = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
+        const SESSIONS = [
+            { id: 'morning', label: 'Sáng' },
+            { id: 'afternoon', label: 'Chiều' },
+            { id: 'evening', label: 'Tối' }
+        ];
+
+        // Các trạng thái của từng ô:
+        // '' (chưa chọn), 'free' (Rảnh), 'all_day' (Rảnh cả ngày), 'busy' (Không Rảnh)
+        const STATUS_CONFIG = {
+            '': {
+                label: '-- Chọn --',
+                shortLabel: 'Trống',
+                bgClass: 'bg-white hover:bg-slate-50 border-slate-200 text-slate-400',
+                badgeClass: ''
+            },
+            'free': {
+                label: 'Rảnh',
+                shortLabel: 'Rảnh',
+                bgClass: 'bg-emerald-100 hover:bg-emerald-200/80 border-emerald-300 text-emerald-800 font-semibold',
+                badgeClass: 'bg-emerald-500'
+            },
+            'all_day': {
+                label: 'Rảnh cả ngày',
+                shortLabel: 'Rảnh cả ngày',
+                bgClass: 'bg-emerald-300 hover:bg-emerald-400/90 border-emerald-500 text-emerald-950 font-bold shadow-xs',
+                badgeClass: 'bg-emerald-700'
+            },
+            'busy': {
+                label: 'Không Rảnh',
+                shortLabel: 'Không Rảnh',
+                bgClass: 'bg-rose-100 hover:bg-rose-200/80 border-rose-300 text-rose-800 font-bold',
+                badgeClass: 'bg-rose-500'
+            }
+        };
+
+        // --- TRẠNG THÁI ỨNG DỤNG (STATE) ---
+        let state = {
+            members: ['Minh', 'Khang', 'Uyên'], // Mặc định 3 người
+            schedule: {},
+            currentView: 'weekly', // 'weekly' | 'monthly'
+            referenceDate: new Date(),
+            isRemoteInitialized: false
+        };
+
+        let nameDebounceTimer = null;
+
+        // --- CẬP NHẬT HUY HIỆU TRẠNG THÁI ĐỒNG BỘ ---
+        function setSyncBadge(status, message) {
+            const badge = document.getElementById('sync-status-badge');
+            const dot = document.getElementById('sync-status-dot');
+            const text = document.getElementById('sync-status-text');
+            if (!badge || !dot || !text) return;
+
+            text.textContent = message;
+            badge.title = message;
+
+            if (status === 'synced') {
+                badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl transition-all';
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+            } else if (status === 'saving') {
+                badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl transition-all';
+                dot.className = 'w-2 h-2 rounded-full bg-indigo-500 animate-ping';
+            } else if (status === 'error') {
+                badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-xl transition-all';
+                dot.className = 'w-2 h-2 rounded-full bg-rose-500';
+            } else {
+                badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl transition-all';
+                dot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
+            }
+        }
+
+        // --- HÀM TIỆN ÍCH NGÀY THÁNG ---
+        function normalizeDate(date) {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        function formatDateKey(date) {
+            const d = normalizeDate(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatShortDate(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            return `${day}/${month}`;
+        }
+
+        function getMondayOfWeek(date) {
+            const d = normalizeDate(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+
+        function getWeekDates(date) {
+            const monday = getMondayOfWeek(date);
+            const dates = [];
+            for (let i = 0; i < 7; i++) {
+                const nextDay = new Date(monday);
+                nextDay.setDate(monday.getDate() + i);
+                dates.push(nextDay);
+            }
+            return dates;
+        }
+
+        function isSameDay(d1, d2) {
+            return formatDateKey(d1) === formatDateKey(d2);
+        }
+
+        // --- LƯU TRỮ & ĐỒNG BỘ CLOUD FIRESTORE ---
+        async function saveStateToCloud() {
+            setSyncBadge('saving', 'Đang lưu...');
+            try {
+                await setDoc(scheduleDocRef, {
+                    members: state.members,
+                    schedule: state.schedule,
+                    updatedAt: Date.now()
+                }, { merge: true });
+                setSyncBadge('synced', 'Đã đồng bộ trực tiếp');
+            } catch (error) {
+                console.error('Lỗi ghi dữ liệu lên Firestore:', error);
+                if (error.code === 'permission-denied') {
+                    setSyncBadge('error', 'Chưa bật quyền Firestore');
+                    showToast('Lỗi quyền truy cập Firestore! Hãy bật Test mode trong tab Rules.', 'warning');
+                } else {
+                    setSyncBadge('error', 'Lỗi đồng bộ');
+                    showToast('Không thể lưu dữ liệu lên đám mây. Kiểm tra kết nối mạng!', 'warning');
+                }
+            }
+        }
+
+        function buildInitialSampleSchedule() {
+            const weekDates = getWeekDates(new Date());
+            const friKey = formatDateKey(weekDates[4]);
+            const satKey = formatDateKey(weekDates[5]);
+            return {
+                [friKey]: {
+                    0: { morning: 'busy', afternoon: 'busy', evening: 'free' },
+                    1: { morning: 'busy', afternoon: 'free', evening: 'free' },
+                    2: { morning: '', afternoon: '', evening: 'free' }
+                },
+                [satKey]: {
+                    0: { morning: 'all_day', afternoon: 'free', evening: 'free' },
+                    1: { morning: 'free', afternoon: 'free', evening: 'busy' },
+                    2: { morning: 'free', afternoon: 'free', evening: 'free' }
+                }
+            };
+        }
+
+        function initRealtimeSync() {
+            const footerRoom = document.getElementById('footer-room-name');
+            if (footerRoom) footerRoom.textContent = ROOM_ID;
+
+            onSnapshot(scheduleDocRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (Array.isArray(data.members) && data.members.length > 0) {
+                        state.members = data.members;
+                    }
+                    state.schedule = (data.schedule && typeof data.schedule === 'object') ? data.schedule : {};
+                    state.isRemoteInitialized = true;
+                    setSyncBadge('synced', 'Đã đồng bộ trực tiếp');
+
+                    // Không render lại danh sách input nếu người dùng đang gõ tên để tránh mất focus
+                    const activeEl = document.activeElement;
+                    if (!activeEl || !activeEl.classList.contains('member-name-input')) {
+                        renderMembersConfig();
+                    }
+                    renderCurrentView();
+                } else {
+                    // Lần đầu tiên phòng này được mở -> khởi tạo dữ liệu mẫu trên Firestore
+                    state.schedule = buildInitialSampleSchedule();
+                    state.isRemoteInitialized = true;
+                    renderMembersConfig();
+                    renderCurrentView();
+                    await saveStateToCloud();
+                }
+            }, (error) => {
+                console.error('Lỗi lắng nghe Firestore:', error);
+                if (error.code === 'permission-denied') {
+                    setSyncBadge('error', 'Chưa bật quyền Firestore');
+                    showToast('Firestore chưa bật quyền đọc/ghi (Test mode). Hãy kiểm tra tab Rules!', 'warning');
+                } else {
+                    setSyncBadge('error', 'Mất kết nối');
+                }
+            });
+        }
+
+        // --- LOGIC XỬ LÝ TRẠNG THÁI RẢNH / BẬN ---
+        function getCellStatus(dateKey, memberIdx, sessionId) {
+            return state.schedule?.[dateKey]?.[memberIdx]?.[sessionId] || '';
+        }
+
+        function updateCellStatus(dateKey, memberIdx, sessionId, newStatus) {
+            if (!state.schedule[dateKey]) {
+                state.schedule[dateKey] = {};
+            }
+            if (!state.schedule[dateKey][memberIdx]) {
+                state.schedule[dateKey][memberIdx] = { morning: '', afternoon: '', evening: '' };
+            }
+
+            const memberDay = state.schedule[dateKey][memberIdx];
+
+            if (newStatus === 'all_day') {
+                // LOGIC ĐẶC BIỆT: Chọn "Rảnh cả ngày" tại bất kỳ buổi nào
+                // -> Ô được chọn là 'all_day', các buổi còn lại trong ngày đó tự động thành 'free' (Rảnh)
+                SESSIONS.forEach(s => {
+                    if (s.id === sessionId) {
+                        memberDay[s.id] = 'all_day';
+                    } else {
+                        memberDay[s.id] = 'free';
+                    }
+                });
+            } else {
+                memberDay[sessionId] = newStatus;
+
+                // Nếu đổi 1 buổi khác thành 'busy' hoặc '', hạ ô 'all_day' trong ngày đó xuống 'free'
+                if (newStatus === 'busy' || newStatus === '') {
+                    SESSIONS.forEach(s => {
+                        if (s.id !== sessionId && memberDay[s.id] === 'all_day') {
+                            memberDay[s.id] = 'free';
+                        }
+                    });
+                }
+            }
+
+            renderCurrentView();
+            saveStateToCloud();
+        }
+
+        function countFreeMembers(dateKey, sessionId) {
+            let freeCount = 0;
+            const total = state.members.length;
+            for (let i = 0; i < total; i++) {
+                const status = getCellStatus(dateKey, i, sessionId);
+                if (status === 'free' || status === 'all_day') {
+                    freeCount++;
+                }
+            }
+            return { freeCount, total };
+        }
+
+        // --- QUẢN LÝ THÀNH VIÊN ---
+        function setMemberCount(newCount) {
+            const count = Math.max(1, Math.min(15, parseInt(newCount) || 1));
+            const currentCount = state.members.length;
+
+            if (count > currentCount) {
+                const defaultNames = ['Minh', 'Khang', 'Uyên', 'Nhân', 'Thảo', 'Huy', 'Lan', 'Tuấn', 'Vy', 'Nam', 'Linh', 'Đức', 'Trang', 'Quân', 'Mai'];
+                for (let i = currentCount; i < count; i++) {
+                    const suggestedName = defaultNames[i] || `Bạn ${i + 1}`;
+                    state.members.push(suggestedName);
+                }
+            } else if (count < currentCount) {
+                state.members = state.members.slice(0, count);
+            }
+
+            renderMembersConfig();
+            renderCurrentView();
+            saveStateToCloud();
+        }
+
+        // --- RENDER UI: THÀNH VIÊN ---
+        function renderMembersConfig() {
+            const countInput = document.getElementById('input-member-count');
+            const listContainer = document.getElementById('members-list');
+
+            countInput.value = state.members.length;
+            listContainer.innerHTML = '';
+
+            state.members.forEach((name, idx) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:bg-white transition-all';
+                item.innerHTML = `
+                    <span class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[11px] font-bold flex items-center justify-center shrink-0">
+                        ${idx + 1}
+                    </span>
+                    <input type="text"
+                        value="${escapeHtml(name)}"
+                        data-member-idx="${idx}"
+                        placeholder="Tên bạn ${idx + 1}"
+                        class="member-name-input w-full text-sm font-medium text-slate-800 bg-transparent focus:outline-none min-w-0"
+                    >
+                    ${state.members.length > 1 ? `
+                        <button type="button" data-remove-idx="${idx}" class="btn-remove-member text-slate-400 hover:text-rose-500 p-0.5 rounded transition-colors shrink-0" title="Xóa thành viên này">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
+                    ` : ''}
+                `;
+                listContainer.appendChild(item);
+            });
+
+            // Gắn sự kiện cho các ô input tên
+            document.querySelectorAll('.member-name-input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const idx = parseInt(e.target.dataset.memberIdx);
+                    updateMemberName(idx, e.target.value);
+                });
+            });
+
+            // Gắn sự kiện xóa từng thành viên
+            document.querySelectorAll('.btn-remove-member').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.currentTarget.dataset.removeIdx);
+                    removeMember(idx);
+                });
+            });
+
+            lucide.createIcons();
+        }
+
+        // --- RENDER UI: THANH THỜI GIAN ---
+        function updatePeriodHeader() {
+            const labelEl = document.getElementById('current-period-label');
+            const subEl = document.getElementById('current-period-sub');
+            const today = normalizeDate(new Date());
+
+            if (state.currentView === 'weekly') {
+                const weekDates = getWeekDates(state.referenceDate);
+                const start = weekDates[0];
+                const end = weekDates[6];
+                const currentMonday = getMondayOfWeek(today);
+
+                const diffDays = Math.round((start - currentMonday) / (1000 * 60 * 60 * 24));
+                if (diffDays === 0) {
+                    labelEl.textContent = 'Tuần hiện tại';
+                } else if (diffDays === -7) {
+                    labelEl.textContent = 'Tuần trước';
+                } else if (diffDays === 7) {
+                    labelEl.textContent = 'Tuần sau';
+                } else if (diffDays < 0) {
+                    labelEl.textContent = `${Math.abs(diffDays / 7)} tuần trước`;
+                } else {
+                    labelEl.textContent = `${diffDays / 7} tuần tới`;
+                }
+
+                subEl.textContent = `${formatShortDate(start)} - ${formatShortDate(end)}/${end.getFullYear()}`;
+            } else {
+                const year = state.referenceDate.getFullYear();
+                const month = state.referenceDate.getMonth() + 1;
+                labelEl.textContent = `Tháng ${month}, ${year}`;
+
+                if (year === today.getFullYear() && state.referenceDate.getMonth() === today.getMonth()) {
+                    subEl.textContent = 'Tháng hiện tại';
+                } else {
+                    subEl.textContent = 'Bấm vào ngày bất kỳ để xem tuần';
+                }
+            }
+        }
+
+        // --- RENDER UI: LỊCH THEO TUẦN (WEEKLY VIEW) ---
+        function updateWeeklyTableHeaders() {
+            const headerRow = document.getElementById('weekly-table-header');
+            // Giữ 3 cột cố định đầu tiên: Ngày, Buổi, Rảnh
+            headerRow.innerHTML = `
+                <th class="py-3.5 px-3 sm:px-4 w-28 sm:w-36 sticky left-0 z-20 bg-slate-50 border-r border-slate-200 sticky-col-shadow">Ngày</th>
+                <th class="py-3.5 px-2.5 w-20 sm:w-24 border-r border-slate-200 text-center">Buổi</th>
+                <th class="py-3.5 px-2.5 w-20 sm:w-24 border-r border-slate-200 text-center bg-slate-100/80 text-emerald-700">Rảnh</th>
+            `;
+
+            state.members.forEach((name, idx) => {
+                const th = document.createElement('th');
+                th.className = 'py-3 px-3 min-w-[135px] sm:min-w-[155px] border-r border-slate-200 last:border-r-0 text-center bg-slate-50';
+                th.innerHTML = `
+                    <div class="flex items-center justify-center gap-1.5">
+                        <span class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold flex items-center justify-center shrink-0">${idx + 1}</span>
+                        <span class="truncate max-w-[110px] text-slate-800 font-bold normal-case text-sm" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+                    </div>
+                `;
+                headerRow.appendChild(th);
+            });
+        }
+
+        function renderWeeklyView() {
+            updateWeeklyTableHeaders();
+            const tbody = document.getElementById('weekly-table-body');
+            tbody.innerHTML = '';
+
+            const weekDates = getWeekDates(state.referenceDate);
+            const today = normalizeDate(new Date());
+
+            weekDates.forEach((dateObj, dayIdx) => {
+                const dateKey = formatDateKey(dateObj);
+                const isToday = isSameDay(dateObj, today);
+                const isWeekend = dayIdx >= 5; // Thứ 7, CN
+
+                SESSIONS.forEach((session, sessionIdx) => {
+                    const tr = document.createElement('tr');
+                    // Thêm đường viền đậm ngăn cách giữa các ngày
+                    const rowBorderClass = sessionIdx === 2 ? 'border-b-2 border-slate-300' : 'border-b border-slate-100';
+                    tr.className = `${rowBorderClass} hover:bg-slate-50/60 transition-colors`;
+
+                    // CỘT 1: NGÀY (Gộp 3 hàng bằng rowspan=3 ở buổi Sáng)
+                    if (sessionIdx === 0) {
+                        const tdDay = document.createElement('td');
+                        tdDay.rowSpan = 3;
+                        tdDay.className = `py-3 px-3 sm:px-4 align-middle sticky left-0 z-10 border-r border-slate-200 sticky-col-shadow ${
+                            isToday ? 'bg-emerald-50/95' : 'bg-white'
+                        }`;
+
+                        tdDay.innerHTML = `
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="font-bold text-sm sm:text-base ${
+                                        isToday ? 'text-emerald-700' : (isWeekend ? 'text-indigo-700' : 'text-slate-800')
+                                    }">${DAYS_OF_WEEK[dayIdx]}</span>
+                                    ${isToday ? '<span class="px-1.5 py-0.5 text-[10px] font-bold bg-emerald-600 text-white rounded-md">Nay</span>' : ''}
+                                </div>
+                                <span class="text-xs font-medium ${isToday ? 'text-emerald-600' : 'text-slate-400'} mt-0.5">
+                                    ${formatShortDate(dateObj)}
+                                </span>
+                            </div>
+                        `;
+                        tr.appendChild(tdDay);
+                    }
+
+                    // CỘT 2: BUỔI (Sáng / Chiều / Tối)
+                    const tdSession = document.createElement('td');
+                    tdSession.className = 'py-2.5 px-2.5 text-center border-r border-slate-200 font-medium text-slate-600 text-xs sm:text-sm bg-slate-50/40';
+                    tdSession.textContent = session.label;
+                    tr.appendChild(tdSession);
+
+                    // CỘT 3: RẢNH (Tỷ lệ số người rảnh / tổng số người)
+                    const { freeCount, total } = countFreeMembers(dateKey, session.id);
+                    const isAllFree = total > 0 && freeCount === total;
+                    const isMajorityFree = total > 0 && freeCount > total / 2 && !isAllFree;
+
+                    const tdCount = document.createElement('td');
+                    tdCount.className = `py-2 px-2 text-center border-r border-slate-200 font-bold text-xs sm:text-sm transition-colors ${
+                        isAllFree
+                            ? 'bg-emerald-500 text-white'
+                            : isMajorityFree
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-slate-50/80 text-slate-600'
+                    }`;
+                    tdCount.innerHTML = `
+                        <div class="inline-flex items-center justify-center gap-1">
+                            <span>${freeCount}/${total}</span>
+                            ${isAllFree ? '<i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-200"></i>' : ''}
+                        </div>
+                    `;
+                    tr.appendChild(tdCount);
+
+                    // CỘT 4 -> 3+i: CÁC Ô TRẠNG THÁI CỦA TỪNG THÀNH VIÊN
+                    state.members.forEach((_, memberIdx) => {
+                        const currentStatus = getCellStatus(dateKey, memberIdx, session.id);
+                        const config = STATUS_CONFIG[currentStatus];
+
+                        const tdMember = document.createElement('td');
+                        tdMember.className = 'p-1.5 border-r border-slate-200 last:border-r-0';
+
+                        // Sử dụng thẻ select được tùy biến giao diện đẹp mắt như nút bấm,
+                        // Sử dụng thẻ select được tùy biến giao diện đẹp mắt như nút bấm
+                        tdMember.innerHTML = `
+                            <div class="relative w-full">
+                                <select
+                                    data-date="${dateKey}"
+                                    data-member="${memberIdx}"
+                                    data-session="${session.id}"
+                                    aria-label="Trạng thái ${state.members[memberIdx]} - ${DAYS_OF_WEEK[dayIdx]} ${session.label}"
+                                    class="status-select w-full appearance-none cursor-pointer rounded-xl border px-2.5 py-2 pr-7 text-xs sm:text-sm text-center transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${config.bgClass}"
+                                >
+                                    <option value="" class="bg-white text-slate-500 font-normal" ${currentStatus === '' ? 'selected' : ''}>-- Chọn --</option>
+                                    <option value="free" class="bg-emerald-50 text-emerald-800 font-semibold" ${currentStatus === 'free' ? 'selected' : ''}>✓ Rảnh</option>
+                                    <option value="all_day" class="bg-emerald-300 text-emerald-950 font-bold" ${currentStatus === 'all_day' ? 'selected' : ''}>★ Rảnh cả ngày</option>
+                                    <option value="busy" class="bg-rose-50 text-rose-800 font-bold" ${currentStatus === 'busy' ? 'selected' : ''}>✕ Không Rảnh</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-current opacity-60">
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                                </div>
+                            </div>
+                        `;
+                        tr.appendChild(tdMember);
+                    });
+
+                    tbody.appendChild(tr);
+                });
+            });
+
+            // Gắn sự kiện thay đổi cho toàn bộ select trong bảng
+            document.querySelectorAll('.status-select').forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const { date, member, session } = e.target.dataset;
+                    updateCellStatus(date, parseInt(member), session, e.target.value);
+                });
+            });
+
+            lucide.createIcons();
+        }
+
+        // --- RENDER UI: LỊCH THEO THÁNG (MONTHLY VIEW) ---
+        function renderMonthlyView() {
+            const grid = document.getElementById('monthly-grid');
+            grid.innerHTML = '';
+
+            const year = state.referenceDate.getFullYear();
+            const month = state.referenceDate.getMonth();
+            const today = normalizeDate(new Date());
+
+            // Ngày đầu tiên của tháng
+            const firstDayOfMonth = new Date(year, month, 1);
+            // Bắt đầu lưới từ Thứ Hai của tuần chứa ngày 1
+            const startGridDate = getMondayOfWeek(firstDayOfMonth);
+
+            // Hiển thị 35 hoặc 42 ô (5 hoặc 6 tuần) cho đủ tháng
+            const lastDayOfMonth = new Date(year, month + 1, 0);
+            const totalDaysNeeded = Math.ceil(((lastDayOfMonth - startGridDate) / (1000 * 60 * 60 * 24) + 1) / 7) * 7;
+
+            for (let i = 0; i < totalDaysNeeded; i++) {
+                const cellDate = new Date(startGridDate);
+                cellDate.setDate(startGridDate.getDate() + i);
+
+                const isCurrentMonth = cellDate.getMonth() === month;
+                const isToday = isSameDay(cellDate, today);
+                const dateKey = formatDateKey(cellDate);
+
+                // Tính tổng hợp 3 buổi trong ngày
+                const sessionStats = SESSIONS.map(s => ({
+                    ...s,
+                    ...countFreeMembers(dateKey, s.id)
+                }));
+
+                // Kiểm tra xem ngày này có buổi nào 100% nhóm rảnh không
+                const hasPerfectSession = sessionStats.some(st => st.total > 0 && st.freeCount === st.total);
+
+                const cell = document.createElement('div');
+                cell.className = `min-h-[115px] sm:min-h-[135px] p-2 sm:p-2.5 flex flex-col justify-between transition-all cursor-pointer group ${
+                    isCurrentMonth ? 'bg-white hover:bg-slate-50' : 'bg-slate-50/70 text-slate-400 hover:bg-slate-100/80'
+                } ${hasPerfectSession && isCurrentMonth ? 'ring-1 ring-inset ring-emerald-400 bg-emerald-50/20' : ''}`;
+
+                // Header ngày trong ô tháng
+                let badgesHtml = '';
+                sessionStats.forEach(st => {
+                    const isFull = st.total > 0 && st.freeCount === st.total;
+                    const isGood = st.total > 0 && st.freeCount > 0 && !isFull;
+
+                    let pillStyle = 'bg-slate-100 text-slate-500';
+                    if (isFull) {
+                        pillStyle = 'bg-emerald-500 text-white font-bold shadow-2xs';
+                    } else if (isGood) {
+                        pillStyle = 'bg-emerald-100 text-emerald-800 font-semibold';
+                    }
+
+                    badgesHtml += `
+                        <div class="flex items-center justify-between px-1.5 py-0.5 rounded text-[11px] sm:text-xs ${pillStyle}">
+                            <span class="truncate">${st.label}</span>
+                            <span>${st.freeCount}/${st.total}</span>
+                        </div>
+                    `;
+                });
+
+                cell.innerHTML = `
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold ${
+                            isToday
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : isCurrentMonth ? 'text-slate-800' : 'text-slate-400'
+                        }">
+                            ${cellDate.getDate()}
+                        </span>
+                        ${hasPerfectSession ? `
+                            <span class="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                                <i data-lucide="check-circle-2" class="w-3 h-3"></i> Đủ nhóm
+                            </span>
+                        ` : `
+                            <span class="opacity-0 group-hover:opacity-100 text-[10px] font-medium text-indigo-600 transition-opacity hidden sm:inline">
+                                Sửa tuần →
+                            </span>
+                        `}
+                    </div>
+                    <div class="space-y-1">
+                        ${badgesHtml}
+                    </div>
+                `;
+
+                // Khi bấm vào ngày bất kỳ trên lịch tháng -> chuyển sang Lịch theo Tuần chứa ngày đó
+                cell.addEventListener('click', () => {
+                    state.referenceDate = new Date(cellDate);
+                    switchView('weekly');
+                    showToast(`Đã chuyển tới tuần chứa ngày ${formatShortDate(cellDate)}/${cellDate.getFullYear()}`, 'info');
+                });
+
+                grid.appendChild(cell);
+            }
+
+            lucide.createIcons();
+        }
+
+        // --- CHUYỂN ĐỔI TAB & ĐIỀU HƯỚNG ---
+        function switchView(viewName) {
+            state.currentView = viewName;
+            const tabWeekly = document.getElementById('tab-weekly');
+            const tabMonthly = document.getElementById('tab-monthly');
+            const viewWeekly = document.getElementById('view-weekly');
+            const viewMonthly = document.getElementById('view-monthly');
+
+            if (viewName === 'weekly') {
+                tabWeekly.className = 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-slate-900 shadow-sm';
+                tabMonthly.className = 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900';
+                viewWeekly.classList.remove('hidden');
+                viewMonthly.classList.add('hidden');
+            } else {
+                tabMonthly.className = 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-white text-slate-900 shadow-sm';
+                tabWeekly.className = 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-600 hover:text-slate-900';
+                viewMonthly.classList.remove('hidden');
+                viewWeekly.classList.add('hidden');
+            }
+
+            renderCurrentView();
+        }
+
+        function renderCurrentView() {
+            updatePeriodHeader();
+            if (state.currentView === 'weekly') {
+                renderWeeklyView();
+            } else {
+                renderMonthlyView();
+            }
+        }
+
+        function navigatePeriod(direction) {
+            const d = new Date(state.referenceDate);
+            if (state.currentView === 'weekly') {
+                d.setDate(d.getDate() + direction * 7);
+            } else {
+                d.setMonth(d.getMonth() + direction);
+            }
+            state.referenceDate = d;
+            renderCurrentView();
+        }
+
+        // --- TIỆN ÍCH: SAO CHÉP LỊCH RẢNH & ĐẶT LẠI TUẦN ---
+        function copyFreeSummaryToClipboard() {
+            const weekDates = getWeekDates(state.referenceDate);
+            const startStr = formatShortDate(weekDates[0]);
+            const endStr = formatShortDate(weekDates[6]);
+            const totalMembers = state.members.length;
+
+            let fullFreeLines = [];
+            let partialFreeLines = [];
+
+            weekDates.forEach((dateObj, dayIdx) => {
+                const dateKey = formatDateKey(dateObj);
+                const dayLabel = `${DAYS_OF_WEEK[dayIdx]} (${formatShortDate(dateObj)})`;
+
+                SESSIONS.forEach(session => {
+                    const { freeCount, total } = countFreeMembers(dateKey, session.id);
+                    if (total === 0) return;
+
+                    if (freeCount === total) {
+                        fullFreeLines.push(`✅ ${dayLabel} - Buổi ${session.label}: Cả nhóm đều rảnh (${freeCount}/${total})`);
+                    } else if (freeCount >= Math.ceil(total / 2) && freeCount > 0) {
+                        // Liệt kê tên những người rảnh
+                        const freeNames = state.members.filter((_, idx) => {
+                            const st = getCellStatus(dateKey, idx, session.id);
+                            return st === 'free' || st === 'all_day';
+                        });
+                        partialFreeLines.push(`• ${dayLabel} - Buổi ${session.label}: ${freeCount}/${total} (${freeNames.join(', ')})`);
+                    }
+                });
+            });
+
+            let summaryText = `📅 TỔNG HỢP LỊCH RẢNH NHÓM (${startStr} - ${endStr})\n`;
+            summaryText += `👥 Thành viên (${totalMembers}): ${state.members.join(', ')}\n\n`;
+
+            if (fullFreeLines.length > 0) {
+                summaryText += `🎉 CÁC BUỔI CẢ NHÓM ĐỀU RẢNH (100%):\n${fullFreeLines.join('\n')}\n\n`;
+            } else {
+                summaryText += `⚠️ Chưa có buổi nào cả nhóm rảnh 100%.\n\n`;
+            }
+
+            if (partialFreeLines.length > 0) {
+                summaryText += `👍 CÁC BUỔI ĐÔNG NGƯỜI RẢNH:\n${partialFreeLines.join('\n')}`;
+            }
+
+            // Copy bằng textarea tạm + execCommand('copy') để đảm bảo tương thích mọi môi trường iframe
+            const textarea = document.createElement('textarea');
+            textarea.value = summaryText;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Đã sao chép tóm tắt lịch rảnh vào bộ nhớ tạm!', 'success');
+            } catch (err) {
+                showToast('Không thể sao chép tự động, vui lòng thử lại.', 'warning');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function resetCurrentWeek() {
+            const weekDates = getWeekDates(state.referenceDate);
+            weekDates.forEach(dateObj => {
+                const dateKey = formatDateKey(dateObj);
+                delete state.schedule[dateKey];
+            });
+            renderCurrentView();
+            saveStateToCloud();
+            showToast('Đã đặt lại toàn bộ lịch của tuần này!', 'info');
+        }
+
+        // --- TOAST THÔNG BÁO & ESCAPE HTML ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const styles = {
+                success: 'bg-slate-900 text-white border-slate-700',
+                info: 'bg-indigo-600 text-white border-indigo-500',
+                warning: 'bg-amber-600 text-white border-amber-500'
+            };
+
+            const icons = {
+                success: 'check-circle-2',
+                info: 'info',
+                warning: 'alert-circle'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transform transition-all duration-300 translate-y-2 opacity-0 ${styles[type] || styles.success}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || icons.success}" class="w-4 h-4 shrink-0"></i>
+                <span>${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // --- KHỞI TẠO SỰ KIỆN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMembersConfig();
+            renderCurrentView();
+            initRealtimeSync();
+
+            // Sự kiện tăng/giảm/nhập số người
+            document.getElementById('btn-decrease-member').addEventListener('click', () => {
+                setMemberCount(state.members.length - 1);
+            });
+            document.getElementById('btn-increase-member').addEventListener('click', () => {
+                setMemberCount(state.members.length + 1);
+            });
+            document.getElementById('input-member-count').addEventListener('change', (e) => {
+                setMemberCount(e.target.value);
+            });
+
+            // Sự kiện chuyển Tab Tuần / Tháng
+            document.getElementById('tab-weekly').addEventListener('click', () => switchView('weekly'));
+            document.getElementById('tab-monthly').addEventListener('click', () => switchView('monthly'));
+
+            // Sự kiện điều hướng thời gian
+            document.getElementById('btn-prev-period').addEventListener('click', () => navigatePeriod(-1));
+            document.getElementById('btn-next-period').addEventListener('click', () => navigatePeriod(1));
+            document.getElementById('btn-today').addEventListener('click', () => {
+                state.referenceDate = new Date();
+                renderCurrentView();
+            });
+
+            // Sao chép lịch rảnh
+            document.getElementById('btn-copy-summary').addEventListener('click', copyFreeSummaryToClipboard);
+
+            // Modal xác nhận đặt lại tuần
+            const modalConfirm = document.getElementById('modal-confirm');
+            document.getElementById('btn-reset-week').addEventListener('click', () => {
+                modalConfirm.classList.remove('hidden');
+                modalConfirm.classList.add('flex');
+            });
+            document.getElementById('btn-cancel-reset').addEventListener('click', () => {
+                modalConfirm.classList.add('hidden');
+                modalConfirm.classList.remove('flex');
+            });
+            document.getElementById('btn-confirm-reset').addEventListener('click', () => {
+                modalConfirm.classList.add('hidden');
+                modalConfirm.classList.remove('flex');
+                resetCurrentWeek();
+            });
+            modalConfirm.addEventListener('click', (e) => {
+                if (e.target === modalConfirm) {
+                    modalConfirm.classList.add('hidden');
+                    modalConfirm.classList.remove('flex');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
